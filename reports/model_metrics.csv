@@ -1,0 +1,9 @@
+model,split,r2,rmse_log,mdape_eur,n
+baseline,train_cv,0.2809,1.0148,0.6,1391
+baseline,test,0.3822,0.9292,0.5365,1482
+ridge,train_cv,0.8559,0.4543,0.299,1391
+ridge,test,0.851,0.4564,0.2928,1482
+lightgbm,train_cv,0.8805,0.4136,0.2642,1391
+lightgbm,test,0.8545,0.4509,0.2869,1482
+lightgbm_with_snapshot,train_cv,0.8858,0.4044,0.2644,1391
+lightgbm_with_snapshot,test,0.8506,0.4569,0.29,1482
