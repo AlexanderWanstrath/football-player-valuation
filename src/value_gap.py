@@ -2,6 +2,8 @@
 
 gap = log(actual market value) - log(predicted value). Predictions come from
 data/processed/predictions.parquet (train season out-of-fold, test season out-of-sample).
+Two ways to flag a player: top / bottom 10% of the season (`gap_category`) and outside the
+80% prediction interval (`interval_flag`, conformalized quantile regression).
 
 Outputs (for the Power BI dashboard)
 - data/processed/value_gaps.csv   one row per player-season with gap, category and top SHAP drivers
@@ -44,9 +46,39 @@ def categorise(gap: pd.Series, season: pd.Series) -> pd.Series:
                      index=gap.index)
 
 
+def conformal_margin(y: pd.Series, q_lo: pd.Series, q_hi: pd.Series, coverage: float) -> float:
+    """CQR: how far the raw quantile band must be widened to reach the target coverage.
+
+    Conformity score = how far a player lies outside his raw band (negative if inside).
+    Uses the finite-sample corrected quantile of the scores (Romano et al., 2019).
+    """
+    scores = np.maximum(q_lo - y, y - q_hi)
+    n = len(scores)
+    return float(np.quantile(scores, min(1.0, np.ceil((n + 1) * coverage) / n)))
+
+
+def add_intervals(out: pd.DataFrame) -> pd.DataFrame:
+    """Calibrate the quantile band on the train season (out-of-fold) and flag values outside it."""
+    train = out["season"] == config.TRAIN_SEASON
+    margin = conformal_margin(out.loc[train, "log_value"], out.loc[train, "pred_log_q_lo"],
+                              out.loc[train, "pred_log_q_hi"], config.INTERVAL_COVERAGE)
+    out["interval_log_lo"] = out["pred_log_q_lo"] - margin
+    out["interval_log_hi"] = out["pred_log_q_hi"] + margin
+
+    # Shift by the season's median gap (season-level shift), consistent with the centred gap
+    shift = out.groupby("season")["gap_log"].transform("median")
+    lo, hi = out["interval_log_lo"] + shift, out["interval_log_hi"] + shift
+    out["value_lower"] = np.exp(lo)
+    out["value_upper"] = np.exp(hi)
+    out["interval_flag"] = np.select([out["log_value"] > hi, out["log_value"] < lo],
+                                     ["Above interval", "Below interval"], "Within interval")
+    return out
+
+
 def compute_gaps(df: pd.DataFrame, preds: pd.DataFrame) -> pd.DataFrame:
     out = df.merge(
-        preds[["player_id", "season", f"pred_log_{config.GAP_MODEL}", f"pred_log_{config.GAP_CHECK_MODEL}"]],
+        preds[["player_id", "season", f"pred_log_{config.GAP_MODEL}", f"pred_log_{config.GAP_CHECK_MODEL}",
+               "pred_log_q_lo", "pred_log_q_hi"]],
         on=["player_id", "season"], how="inner", validate="1:1",
     )
     pred = out[f"pred_log_{config.GAP_MODEL}"]
@@ -54,8 +86,9 @@ def compute_gaps(df: pd.DataFrame, preds: pd.DataFrame) -> pd.DataFrame:
     out["gap_log"] = out["log_value"] - pred
     out["gap_pct"] = np.exp(out["gap_log"]) - 1
 
-    # Market values rose between seasons, so the raw gap is shifted in the test season.
-    # The centred gap compares a player with the typical gap of his season.
+    # The raw gap is shifted in the test season (about half higher value level, half lower predictions
+    # from a team-strength shift in the sample; see notebook 04). The centred gap compares a player
+    # with the typical gap of his season.
     out["gap_log_centred"] = out["gap_log"] - out.groupby("season")["gap_log"].transform("median")
     out["gap_pct_centred"] = np.exp(out["gap_log_centred"]) - 1
     out["gap_percentile"] = out.groupby("season")["gap_log"].rank(pct=True)
@@ -64,6 +97,7 @@ def compute_gaps(df: pd.DataFrame, preds: pd.DataFrame) -> pd.DataFrame:
     # Cross-check with a second model: does Ridge put the player in the same category?
     out["gap_log_ridge"] = out["log_value"] - out[f"pred_log_{config.GAP_CHECK_MODEL}"]
     out["models_agree"] = categorise(out["gap_log_ridge"], out["season"]) == out["gap_category"]
+    out = add_intervals(out)
 
     # Persistence: the same player's gap in the previous season (if in the sample)
     prev = out[["player_id", "season", "gap_log"]].assign(season=lambda d: d["season"] + 1)
@@ -121,6 +155,7 @@ EXPORT_COLUMNS = [
     "position", "sub_position", "age", "minutes", "goals", "assists", "cl_minutes", "team_ppg",
     "market_value", "predicted_value", "gap_log", "gap_pct", "gap_log_centred", "gap_pct_centred",
     "gap_percentile", "gap_category", "gap_log_ridge", "models_agree", "gap_log_prev_season",
+    "value_lower", "value_upper", "interval_flag",
 ]
 
 
@@ -148,6 +183,7 @@ def main() -> None:
         players=("player_id", "size"), median_gap_pct=("gap_pct", "median"),
         ridge_agrees=("models_agree", "mean"))
     print(summary.round(3).to_string())
+    print("\n" + pd.crosstab([export["season_label"], export["gap_category"]], export["interval_flag"]).to_string())
 
 
 if __name__ == "__main__":

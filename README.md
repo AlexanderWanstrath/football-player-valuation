@@ -3,7 +3,8 @@
 A machine learning project that explains Transfermarkt market values of outfield players in Europe's Big 5 leagues
 and flags players whose value deviates strongly from what their profile and performance suggest.
 
-> **Status:** Day 4 of 7 · Models, SHAP analysis and value-gap list done. Next: Power BI dashboard.
+> **Status:** Day 4 of 7 · Models, SHAP analysis, value-gap list and deep dive (robustness, interactions, drift,
+> prediction intervals) done. Next: Power BI dashboard.
 
 ## Business question
 
@@ -61,8 +62,34 @@ Value gap = log(actual value) - log(predicted value). Players in the top / botto
   about 10% below, Premier League players about 8% above.
 - **Gaps persist:** r = 0.39 between seasons. 26% of players above the model in 2024/25 are above it again in
   2025/26 (10% expected by chance), which points to stable factors the data does not capture.
-- **Market inflation:** in 2025/26 values are on average 15% above what the 2024/25 model predicts, so flags are
-  set per season.
+- **Season shift:** in 2025/26 values are on average 15% above what the 2024/25 model predicts, so flags are set
+  per season. The deep dive shows this is only half a higher value level; the other half comes from lower
+  predictions due to a shift in team strength within the sample.
+
+### 4. Deep dive: how far can these results be trusted?
+
+**Robust drivers.** Grouping correlated features into business concepts and shuffling them together
+(grouped permutation importance) gives almost the same ranking for LightGBM and Ridge:
+
+![Grouped importance](reports/figures/19_grouped_importance.png)
+
+- Age (40%), team strength (17-22%) and league (16-17%) explain most of the model's accuracy; goals and assists
+  only 5-6%. Gain, permutation and SHAP rankings of LightGBM correlate at 0.93-0.96.
+- **Effects are mostly additive** (Friedman's H-statistic: median 0.05, max 0.10), which explains why Ridge is
+  almost as accurate as LightGBM. The Premier League premium holds at every age (+82% to +146%, peak at 27).
+
+**Prediction intervals.** Conformalized quantile regression gives each player an 80% interval that holds out of
+sample (coverage 80.8% on 2025/26; raw quantile models only reach 68%). The median interval spans a factor of
+3.8 (e.g. EUR 5m to 19m), so a single point prediction overstates precision.
+
+![Prediction intervals](reports/figures/23_prediction_intervals.png)
+
+Only 44% of the top-10% gaps also lie outside their interval: the same +80% gap can be normal for a
+hard-to-predict 19-year-old and unusual for an established 27-year-old. The dashboard therefore offers both flags.
+
+**Drift.** Between the seasons all inputs are stable (PSI < 0.05) except team strength (PSI 0.10-0.13). Players in
+both seasons lost 10% of value on the market (median) but 15% in the model: the market depreciates one extra year
+of age less than the cross-section suggests.
 
 ## Data
 
@@ -132,13 +159,15 @@ football-player-valuation/
 ├── notebooks/
 │   ├── 01_eda.ipynb          # data coverage, target definition, design decisions
 │   ├── 02_modelling.ipynb    # baseline, Ridge, LightGBM explained step by step
-│   └── 03_shap_value_gap.ipynb  # drivers (SHAP) and value-gap analysis
+│   ├── 03_shap_value_gap.ipynb  # drivers (SHAP) and value-gap analysis
+│   └── 04_deep_dive.ipynb    # robustness, interactions, drift, prediction intervals
 ├── src/
 │   ├── config.py             # single source of truth: paths, scope, target, feature lists
 │   ├── db.py                 # DuckDB connection and query helpers
 │   ├── build_dataset.py      # SQL pipeline -> one row per player-season
 │   ├── train_models.py       # training, temporal validation, predictions
-│   └── value_gap.py          # value gap, SHAP drivers, dashboard exports
+│   ├── value_gap.py          # value gap, prediction intervals, SHAP drivers, dashboard exports
+│   └── diagnostics.py        # grouped importance, H-statistic, partial dependence, PSI drift
 ├── reports/
 │   ├── figures/              # exported charts
 │   └── model_metrics.csv     # train CV and test metrics per model
@@ -152,6 +181,7 @@ football-player-valuation/
 - [x] Day 2: SQL pipeline for the player-season modelling dataset
 - [x] Day 3: Baseline, Ridge and LightGBM with temporal validation
 - [x] Day 4: SHAP analysis and value-gap list
+- [x] Day 4+: Deep dive (driver robustness, interactions, drift, prediction intervals)
 - [ ] Day 5: Power BI dashboard
 - [ ] Day 6-7: Documentation and polish
 

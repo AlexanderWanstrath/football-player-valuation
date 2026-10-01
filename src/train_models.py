@@ -122,6 +122,21 @@ def tune_lgbm(X: pd.DataFrame, y: pd.Series) -> LGBMRegressor:
     return search.best_estimator_
 
 
+def fit_quantiles(lgbm: LGBMRegressor, X_train, y_train, X_test) -> dict[str, np.ndarray]:
+    """Lower / upper quantile LightGBM with the tuned settings: out-of-fold on train, refit for test.
+
+    Raw quantile models under-cover (about 66% for a nominal 80%); value_gap.py calibrates them
+    with conformalized quantile regression (CQR) on the out-of-fold errors.
+    """
+    alpha_lo = (1 - config.INTERVAL_COVERAGE) / 2
+    out = {}
+    for col, alpha in [("pred_log_q_lo", alpha_lo), ("pred_log_q_hi", 1 - alpha_lo)]:
+        model = LGBMRegressor(**{**lgbm.get_params(), "objective": "quantile", "alpha": alpha})
+        oof = cross_val_predict(model, X_train, y_train, cv=CV)
+        out[col] = np.concatenate([oof, model.fit(X_train, y_train).predict(X_test)])
+    return out
+
+
 # ---------------------------------------------------------------------------
 # Training run
 # ---------------------------------------------------------------------------
@@ -173,6 +188,9 @@ def main() -> None:
     out["split"] = np.where(out["season"] == config.TRAIN_SEASON, "train_oof", "test")
     for name, pred in preds.items():
         out[f"pred_log_{name}"] = pred
+    # Raw quantile predictions for the prediction interval (calibrated in value_gap.py)
+    for col, pred in fit_quantiles(lgbm, train[features], y_train, test[features]).items():
+        out[col] = pred
     out.to_parquet(config.PREDICTIONS_PATH, index=False)
 
     config.MODELS_DIR.mkdir(parents=True, exist_ok=True)
