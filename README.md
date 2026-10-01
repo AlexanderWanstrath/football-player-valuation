@@ -3,7 +3,7 @@
 A machine learning project that explains Transfermarkt market values of outfield players in Europe's Big 5 leagues
 and flags players whose value deviates strongly from what their profile and performance suggest.
 
-> **Status:** Day 3 of 7 · Models trained and validated. Next: SHAP analysis and value-gap list.
+> **Status:** Day 4 of 7 · Models, SHAP analysis and value-gap list done. Next: Power BI dashboard.
 
 ## Business question
 
@@ -19,6 +19,8 @@ therefore does not automatically mean mispricing: it can also reflect factors ou
 
 ## Results so far
 
+### 1. Model quality
+
 Trained on **2024/25** (1,391 players), tested on the unseen season **2025/26** (1,482 players):
 
 | Model | R² (log value) | RMSE (log) | Median abs. error in EUR |
@@ -31,13 +33,36 @@ Trained on **2024/25** (1,391 players), tested on the unseen season **2025/26** 
 
 - **The model generalises:** test scores on 2025/26 match cross-validation on 2024/25 (R² 0.881).
 - **Ridge is almost as accurate as LightGBM**, so a simple, interpretable model captures most of the signal.
-- **Main drivers:** age and team strength (goal difference and points per game of the club), followed by league
-  and Champions League minutes. Positions differ in raw value (attackers median EUR 14m vs defenders EUR 8m),
-  but most of that gap is explained by goals and assists rather than by the position itself.
 
-![Predicted vs actual](reports/figures/07_predicted_vs_actual.png)
+### 2. What drives market value? (SHAP, test season 2025/26)
 
-Points above the diagonal are players valued higher than the data explains (positive value gap).
+![SHAP beeswarm](reports/figures/10_shap_beeswarm.png)
+
+- **Age is the strongest driver** (23% of mean |SHAP|): an 18-year-old is predicted at roughly 2-3x the average
+  player, a 33-year-old at less than half.
+- **Team strength comes next** (goal difference 14%, points per game 6%), followed by **league** (12%: Premier League
+  +86%, the other four leagues -9% to -23%), **playing time** and **Champions League minutes** (up to +90% for 1,200+ minutes).
+- **Output matters less than expected:** goals account for 5%. A goal adds about +3% for attackers and defenders
+  and +4% for midfielders, so attackers are worth more because they score more, not because a goal counts more.
+
+![SHAP dependence](reports/figures/11_shap_dependence.png)
+
+### 3. Value gap: who is valued above or below the model?
+
+Value gap = log(actual value) - log(predicted value). Players in the top / bottom 10% of their season are flagged.
+
+![Value gap by group](reports/figures/13_gap_by_group.png)
+
+- **Above model:** mostly young talents at mid-table clubs (e.g. Jérémy Jacquet, 20, Rennes: EUR 55m vs EUR 12.6m
+  predicted) and established names. Potential and reputation are not in the data.
+- **Below model:** mostly players over 30, whose value falls faster than their output (e.g. Nicolas Pépé, 31,
+  Villarreal: EUR 6m vs EUR 20.8m predicted).
+- **Gaps are partly systematic:** under-21s sit about 7% above the model, over-30s about 8% below; LaLiga players
+  about 10% below, Premier League players about 8% above.
+- **Gaps persist:** r = 0.39 between seasons. 26% of players above the model in 2024/25 are above it again in
+  2025/26 (10% expected by chance), which points to stable factors the data does not capture.
+- **Market inflation:** in 2025/26 values are on average 15% above what the 2024/25 model predicts, so flags are
+  set per season.
 
 ## Data
 
@@ -90,6 +115,7 @@ curl.exe -L -o data\raw\transfermarkt-datasets.duckdb https://pub-e682421888d945
 # 4. Build the modelling table and train the models
 python -m src.build_dataset    # -> data/processed/player_seasons.parquet
 python -m src.train_models     # -> predictions, metrics, fitted models
+python -m src.value_gap        # -> value_gaps.csv and shap_values.csv for the dashboard
 ```
 
 The notebooks explain each step and can be opened with `jupyter lab` or VS Code. The database path can be
@@ -105,12 +131,14 @@ football-player-valuation/
 │   └── processed/            # modelling table and predictions (not tracked, re-created by the scripts)
 ├── notebooks/
 │   ├── 01_eda.ipynb          # data coverage, target definition, design decisions
-│   └── 02_modelling.ipynb    # baseline, Ridge, LightGBM explained step by step
+│   ├── 02_modelling.ipynb    # baseline, Ridge, LightGBM explained step by step
+│   └── 03_shap_value_gap.ipynb  # drivers (SHAP) and value-gap analysis
 ├── src/
 │   ├── config.py             # single source of truth: paths, scope, target, feature lists
 │   ├── db.py                 # DuckDB connection and query helpers
 │   ├── build_dataset.py      # SQL pipeline -> one row per player-season
-│   └── train_models.py       # training, temporal validation, predictions
+│   ├── train_models.py       # training, temporal validation, predictions
+│   └── value_gap.py          # value gap, SHAP drivers, dashboard exports
 ├── reports/
 │   ├── figures/              # exported charts
 │   └── model_metrics.csv     # train CV and test metrics per model
@@ -123,7 +151,7 @@ football-player-valuation/
 - [x] Day 1: EDA, data coverage, target definition
 - [x] Day 2: SQL pipeline for the player-season modelling dataset
 - [x] Day 3: Baseline, Ridge and LightGBM with temporal validation
-- [ ] Day 4: SHAP analysis and value-gap list
+- [x] Day 4: SHAP analysis and value-gap list
 - [ ] Day 5: Power BI dashboard
 - [ ] Day 6-7: Documentation and polish
 

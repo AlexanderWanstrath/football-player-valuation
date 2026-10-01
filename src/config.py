@@ -84,6 +84,30 @@ AGE_LABELS = ["<21", "21-23", "24-26", "27-29", "30+"]
 RANDOM_STATE = 42
 CV_FOLDS = 5
 
+# Readable feature names for charts and the dashboard
+FEATURE_LABELS = {
+    "age": "Age", "height_in_cm": "Height (cm)",
+    "appearances": "League appearances", "minutes": "League minutes", "minutes_share": "Share of league minutes",
+    "goals": "Goals", "assists": "Assists", "goals_p90": "Goals per 90", "assists_p90": "Assists per 90",
+    "goal_contrib_p90": "Goals + assists per 90", "yellow_cards": "Yellow cards", "red_cards": "Red cards",
+    "team_ppg": "Team points per game", "team_goal_diff_pg": "Team goal difference per game",
+    "cl_minutes": "Champions League minutes", "el_minutes": "Europa League minutes",
+    "mid_season_transfer": "Mid-season transfer", "prev_season_covered": "Previous season in data",
+    "prev_minutes": "Previous season minutes", "prev_goals": "Previous season goals",
+    "prev_assists": "Previous season assists", "prev_big5": "Played Big 5 previous season",
+    "league": "League", "position": "Position", "sub_position": "Detailed position", "foot": "Preferred foot",
+}
+
+# ---------------------------------------------------------------------------
+# Value gap (day 4)
+# ---------------------------------------------------------------------------
+# gap = log(actual value) - log(predicted value) from GAP_MODEL.
+# Players in the top / bottom GAP_QUANTILE of their season are flagged.
+GAP_MODEL = "lightgbm"
+GAP_CHECK_MODEL = "ridge"
+GAP_QUANTILE = 0.10
+N_TOP_DRIVERS = 3
+
 # ---------------------------------------------------------------------------
 # Outputs
 # ---------------------------------------------------------------------------
@@ -91,6 +115,8 @@ DATASET_PATH = DATA_PROCESSED / "player_seasons.parquet"
 PREDICTIONS_PATH = DATA_PROCESSED / "predictions.parquet"
 MODELS_DIR = ROOT / "models"
 METRICS_PATH = ROOT / "reports" / "model_metrics.csv"
+VALUE_GAPS_PATH = DATA_PROCESSED / "value_gaps.csv"
+SHAP_VALUES_PATH = DATA_PROCESSED / "shap_values.csv"
 
 
 def season_cutoff(season: int) -> str:
