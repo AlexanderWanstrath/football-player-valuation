@@ -43,8 +43,9 @@ Trained on **2024/25** (1,391 players), tested on the unseen season **2025/26** 
   player, a 33-year-old at less than half.
 - **Team strength comes next** (goal difference 14%, points per game 6%), followed by **league** (12%: Premier League
   +86%, the other four leagues -9% to -23%), **playing time** and **Champions League minutes** (up to +90% for 1,200+ minutes).
-- **Output matters less than expected:** goals account for 5%. A goal adds about +3% for attackers and defenders
-  and +4% for midfielders, so attackers are worth more because they score more, not because a goal counts more.
+- **Output matters less than expected:** goals account for 5%. One more goal adds about +4% for attackers, +5% for
+  defenders and +6% for midfielders, so attackers are worth more because they score more, not because a goal
+  counts more.
 
 ![SHAP dependence](reports/figures/11_shap_dependence.png)
 
@@ -87,9 +88,9 @@ sample (coverage 80.8% on 2025/26; raw quantile models only reach 68%). The medi
 Only 44% of the top-10% gaps also lie outside their interval: the same +80% gap can be normal for a
 hard-to-predict 19-year-old and unusual for an established 27-year-old. The dashboard therefore offers both flags.
 
-**Drift.** Between the seasons all inputs are stable (PSI < 0.05) except team strength (PSI 0.10-0.13). Players in
-both seasons lost 10% of value on the market (median) but 15% in the model: the market depreciates one extra year
-of age less than the cross-section suggests.
+**Drift.** Between the seasons all inputs are stable (PSI < 0.05) except team strength (PSI 0.10-0.13): the
+2025/26 sample contains more players from teams with a negative goal difference. Together with a 7% higher value
+level, this explains why the 2024/25 model under-predicts the test season by about 15% on average.
 
 ## Data
 

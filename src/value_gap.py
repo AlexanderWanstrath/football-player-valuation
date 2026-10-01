@@ -49,7 +49,7 @@ def categorise(gap: pd.Series, season: pd.Series) -> pd.Series:
 def conformal_margin(y: pd.Series, q_lo: pd.Series, q_hi: pd.Series, coverage: float) -> float:
     """CQR: how far the raw quantile band must be widened to reach the target coverage.
 
-    Conformity score = how far a player lies outside his raw band (negative if inside).
+    Conformity score = how far a player lies outside their raw band (negative if inside).
     Uses the finite-sample corrected quantile of the scores (Romano et al., 2019).
     """
     scores = np.maximum(q_lo - y, y - q_hi)
@@ -88,7 +88,7 @@ def compute_gaps(df: pd.DataFrame, preds: pd.DataFrame) -> pd.DataFrame:
 
     # The raw gap is shifted in the test season (about half higher value level, half lower predictions
     # from a team-strength shift in the sample; see notebook 04). The centred gap compares a player
-    # with the typical gap of his season.
+    # with the typical gap of their season.
     out["gap_log_centred"] = out["gap_log"] - out.groupby("season")["gap_log"].transform("median")
     out["gap_pct_centred"] = np.exp(out["gap_log_centred"]) - 1
     out["gap_percentile"] = out.groupby("season")["gap_log"].rank(pct=True)

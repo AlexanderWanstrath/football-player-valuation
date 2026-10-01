@@ -109,7 +109,7 @@ GAP_QUANTILE = 0.10
 N_TOP_DRIVERS = 3
 
 # Prediction interval: conformalized quantile regression with this target coverage.
-# A player whose value lies outside his (season-centred) interval is flagged as well.
+# A player whose value lies outside their (season-centred) interval is flagged as well.
 INTERVAL_COVERAGE = 0.80
 
 # ---------------------------------------------------------------------------
