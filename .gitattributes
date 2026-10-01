@@ -1,0 +1,6 @@
+# Normalise line endings in the repository (LF), regardless of the OS
+* text=auto
+
+# Binary files
+*.png binary
+*.pbix binary

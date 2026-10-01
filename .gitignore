@@ -1,0 +1,31 @@
+# Data (too large for GitHub, re-downloadable)
+data/raw/*
+data/processed/*
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+*.duckdb
+*.duckdb.wal
+*.csv.gz
+*.zip
+
+# Fitted models (re-created by src/train_models.py)
+models/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.env
+
+# Jupyter
+.ipynb_checkpoints/
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Power BI temp files
+dashboard/*.pbix.bak

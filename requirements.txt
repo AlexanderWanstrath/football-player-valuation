@@ -1,0 +1,18 @@
+# Data access
+duckdb>=1.1
+pandas>=2.2
+pyarrow>=16.0
+numpy>=1.26
+
+# Visualisation
+matplotlib>=3.8
+seaborn>=0.13
+
+# Modelling (used from day 3 onwards)
+scikit-learn>=1.5
+lightgbm>=4.3
+shap>=0.45
+
+# Notebooks
+jupyterlab>=4.2
+ipykernel>=6.29
