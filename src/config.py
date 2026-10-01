@@ -59,7 +59,7 @@ EUROPEAN_COMPETITIONS = {"CL": "Champions League", "EL": "Europa League"}
 MID_SEASON_WINDOW = ("09-15", "04-30")
 
 # ---------------------------------------------------------------------------
-# Model features (day 3)
+# Model features
 # ---------------------------------------------------------------------------
 TARGET = "log_value"
 
@@ -99,7 +99,7 @@ FEATURE_LABELS = {
 }
 
 # ---------------------------------------------------------------------------
-# Value gap (day 4)
+# Value gap
 # ---------------------------------------------------------------------------
 # gap = log(actual value) - log(predicted value) from GAP_MODEL.
 # Players in the top / bottom GAP_QUANTILE of their season are flagged.

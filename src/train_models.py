@@ -3,7 +3,7 @@
 Outputs
 - reports/model_metrics.csv          CV metrics on the train season, test metrics on the test season
 - data/processed/predictions.parquet out-of-fold predictions (train) and test predictions per model
-- models/*.joblib                    fitted Ridge and LightGBM for the SHAP analysis (day 4)
+- models/*.joblib                    fitted Ridge and LightGBM for the SHAP analysis (notebook 03)
 
 Run from the project root:  python -m src.train_models
 """

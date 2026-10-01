@@ -35,62 +35,70 @@ Trained on **2024/25** (1,391 players), tested on the unseen season **2025/26** 
 - **The model generalises:** test scores on 2025/26 match cross-validation on 2024/25 (R² 0.881).
 - **Ridge is almost as accurate as LightGBM**, so a simple, interpretable model captures most of the signal.
 
-### 2. What drives market value? (SHAP, test season 2025/26)
+### 2. What drives market value?
+
+**Ranking by concept** (grouped permutation importance on the test season: how much the error rises when all
+features of a concept are shuffled together). LightGBM and Ridge agree closely, so the ranking does not depend on
+the algorithm:
+
+![Grouped importance](reports/figures/19_grouped_importance.png)
+
+- **Age (40%), team strength (17-22%) and league (16-17%)** explain most of what the model can explain.
+  Playing time follows with 7-10%, goals and assists with 5-6%, European minutes with 4-6%.
+- *Other importance measures in the notebooks (gain, mean |SHAP|) give lower single-feature shares, e.g. 23% for
+  age, because correlated features split the credit. The order of the top drivers is the same with every method
+  (rank correlation 0.93-0.96).*
+
+**Direction of the effects** (SHAP, test season 2025/26):
 
 ![SHAP beeswarm](reports/figures/10_shap_beeswarm.png)
 
-- **Age is the strongest driver** (23% of mean |SHAP|): an 18-year-old is predicted at roughly 2-3x the average
-  player, a 33-year-old at less than half.
-- **Team strength comes next** (goal difference 14%, points per game 6%), followed by **league** (12%: Premier League
-  +86%, the other four leagues -9% to -23%), **playing time** and **Champions League minutes** (up to +90% for 1,200+ minutes).
-- **Output matters less than expected:** goals account for 5%. One more goal adds about +4% for attackers, +5% for
-  defenders and +6% for midfielders, so attackers are worth more because they score more, not because a goal
+- **Age:** an 18-year-old is predicted at roughly 2-3x the average player, a 33-year-old at less than half.
+- **Team strength and Champions League:** players of dominant teams are predicted up to about +90% above average;
+  1,200+ Champions League minutes add up to +90%.
+- **League:** compared with the average player, the Premier League adds +86% and the other four leagues -9% to
+  -23%. Put differently, a Premier League player is worth about 1.8x to 2.5x a comparable player elsewhere
+  (+82% to +146% depending on age, peak at 27).
+- **Goals:** the effect is real but small in the overall picture. One more goal adds about +4% for attackers, +5%
+  for defenders and +6% for midfielders, so attackers are worth more because they score more, not because a goal
   counts more.
+- **Effects are mostly additive** (Friedman's H-statistic: median 0.05, max 0.10), which explains why the linear
+  Ridge model is almost as accurate as LightGBM.
 
 ![SHAP dependence](reports/figures/11_shap_dependence.png)
 
 ### 3. Value gap: who is valued above or below the model?
 
-Value gap = log(actual value) - log(predicted value). Players in the top / bottom 10% of their season are flagged.
+Value gap = log(actual value) - log(predicted value). Two flags are computed per season:
 
-![Value gap by group](reports/figures/13_gap_by_group.png)
-
-- **Above model:** mostly young talents at mid-table clubs (e.g. Jérémy Jacquet, 20, Rennes: EUR 55m vs EUR 12.6m
-  predicted) and established names. Potential and reputation are not in the data.
-- **Below model:** mostly players over 30, whose value falls faster than their output (e.g. Nicolas Pépé, 31,
-  Villarreal: EUR 6m vs EUR 20.8m predicted).
-- **Gaps are partly systematic:** under-21s sit about 7% above the model, over-30s about 8% below; LaLiga players
-  about 10% below, Premier League players about 8% above.
-- **Gaps persist:** r = 0.39 between seasons. 26% of players above the model in 2024/25 are above it again in
-  2025/26 (10% expected by chance), which points to stable factors the data does not capture.
-- **Season shift:** in 2025/26 values are on average 15% above what the 2024/25 model predicts, so flags are set
-  per season. The deep dive shows this is only half a higher value level; the other half comes from lower
-  predictions due to a shift in team strength within the sample.
-
-### 4. Deep dive: how far can these results be trusted?
-
-**Robust drivers.** Grouping correlated features into business concepts and shuffling them together
-(grouped permutation importance) gives almost the same ranking for LightGBM and Ridge:
-
-![Grouped importance](reports/figures/19_grouped_importance.png)
-
-- Age (40%), team strength (17-22%) and league (16-17%) explain most of the model's accuracy; goals and assists
-  only 5-6%. Gain, permutation and SHAP rankings of LightGBM correlate at 0.93-0.96.
-- **Effects are mostly additive** (Friedman's H-statistic: median 0.05, max 0.10), which explains why Ridge is
-  almost as accurate as LightGBM. The Premier League premium holds at every age (+82% to +146%, peak at 27).
-
-**Prediction intervals.** Conformalized quantile regression gives each player an 80% interval that holds out of
-sample (coverage 80.8% on 2025/26; raw quantile models only reach 68%). The median interval spans a factor of
-3.8 (e.g. EUR 5m to 19m), so a single point prediction overstates precision.
+- **Recommended: outside the 80% prediction interval.** Conformalized quantile regression gives each player an
+  interval that holds out of sample (coverage 80.8% on 2025/26; raw quantile models only reach 68%). The median
+  interval spans a factor of 3.8 (e.g. EUR 5m to 19m), so a point prediction alone overstates precision.
+- **Simple alternative: top / bottom 10% of the gap.** Easy to explain, but ignores that some players are much
+  harder to predict than others. Only 44% of the top-10% gaps also lie outside their interval: the same +80% gap
+  can be normal for a 19-year-old and unusual for an established 27-year-old.
 
 ![Prediction intervals](reports/figures/23_prediction_intervals.png)
 
-Only 44% of the top-10% gaps also lie outside their interval: the same +80% gap can be normal for a
-hard-to-predict 19-year-old and unusual for an established 27-year-old. The dashboard therefore offers both flags.
+- **Above model:** mostly young talents at mid-table clubs (e.g. Jérémy Jacquet, 20, Rennes: EUR 55m vs EUR 12.6m
+  predicted) and established names. Potential and reputation are not in the data.
+- **Below model:** mostly players over 30, whom the market values lower than their age, team and output would
+  suggest (e.g. Nicolas Pépé, 31, Villarreal: EUR 6m vs EUR 20.8m predicted).
+- **Gaps are partly systematic:** under-21s sit about 7% above the model, over-30s about 8% below; LaLiga players
+  about 10% below, Premier League players about 8% above.
 
-**Drift.** Between the seasons all inputs are stable (PSI < 0.05) except team strength (PSI 0.10-0.13): the
-2025/26 sample contains more players from teams with a negative goal difference. Together with a 7% higher value
-level, this explains why the 2024/25 model under-predicts the test season by about 15% on average.
+![Value gap by group](reports/figures/13_gap_by_group.png)
+
+- **Gaps persist:** r = 0.39 between seasons. 26% of players above the model in 2024/25 are above it again in
+  2025/26 (10% expected by chance), which points to stable factors the data does not capture.
+
+### 4. Does the model hold for the next season?
+
+- Test scores on 2025/26 match cross-validation on 2024/25 (section 1).
+- **Season shift:** the 2024/25 model under-predicts 2025/26 by about 15% on average, so flags are set per season.
+  A drift analysis (population stability index) shows that all inputs are stable except team strength: the
+  2025/26 sample contains more players from teams with a negative goal difference. About half of the shift is a
+  7% higher value level, the other half comes from these lower predictions. It is not pure market inflation.
 
 ## Data
 
