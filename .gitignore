@@ -21,6 +21,9 @@ venv/
 # Jupyter
 .ipynb_checkpoints/
 
+# Local working notes (not part of the public repo)
+CLAUDE.md
+
 # IDE / OS
 .vscode/
 .idea/

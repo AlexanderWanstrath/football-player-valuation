@@ -130,3 +130,8 @@ football-player-valuation/
 ## Tech stack
 
 Python · DuckDB/SQL · pandas · scikit-learn · LightGBM · SHAP · Power BI
+
+## License
+
+Code: [MIT](LICENSE). Data: [transfermarkt-datasets](https://github.com/dcaribou/transfermarkt-datasets) (CC0),
+not included in this repository.
